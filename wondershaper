@@ -3,8 +3,7 @@
 #
 # Set the following values to somewhat less than your actual download
 # and uplink speed. In kilobits. Also set the device that is to be shaped.
-#
-# License GPLv2 <https://gnu.org/licenses/gpl-2.0.html>
+# # License GPLv2 <https://gnu.org/licenses/gpl-2.0.html>
 #
 # Copyright (c) 2002-2018 Bert Hubert <ahu@ds9a.nl>,
 #         Jacco Geul <jacco@geul.net>, Simon Séhier <simon@sehier.fr>
@@ -19,7 +18,7 @@ VERSION=1.4
 usage()
 {
 cat << EOF
-USAGE: $0 [-hcs] [-a <adapter>] [-d <rate>] [-u <rate>]
+USAGE: $0 [-hcs] [-a <adapter>] [-d <rate>] [-l <delay>] [-u <rate>]
 
 Limit the bandwidth of an adapter
 
@@ -27,6 +26,7 @@ OPTIONS:
    -h           Show this message
    -a <adapter> Set the adpter
    -d <rate>    Set maximum download rate (in Kbps) and/or
+   -l <delay>   Set downlink delay (in ms)
    -u <rate>    Set maximum upload rate (in Kbps)
    -p           Use presets in /etc/conf.d/wondershaper.conf
    -c           Clear the limits from adapter
@@ -34,12 +34,12 @@ OPTIONS:
    -v           Show the current version
 
 MODES:
-   wondershaper -a <adapter> -d <rate> -u <rate>
+   wondershaper -a <adapter> -d <rate> -l <delay> -u <rate>
    wondershaper -c -a <adapter>
    wondershaper -s -a <adapter>
 
 EXAMPLES:
-   wondershaper -a eth0 -d 1024 -u 512
+   wondershaper -a eth0 -d 1024 -l 20 -u 512
    wondershaper -a eth0 -u 512
    wondershaper -c -a eth0
 
@@ -47,18 +47,20 @@ EOF
 }
 
 DSPEED=
+DDELAY=
 USPEED=
 IFACE=
 IFB="ifb0"
 MODE=
 
-while getopts hvd:u:a:pcs o
+while getopts hvd:u:l:a:pcs o
 do	case "$o" in
 	h)	usage
 		exit 1;;
         v)      echo "Version $VERSION"
                 exit 0;;
 	d)	DSPEED=$OPTARG;;
+	l)      DDELAY=$OPTARG;;
 	u)      USPEED=$OPTARG;;
 	a)      IFACE=$OPTARG;;
 	p)      MODE="presets";;
@@ -236,6 +238,7 @@ then
     # Add class and rules for virtual
     tc qdisc add dev $IFB root handle 2: htb
     tc class add dev $IFB parent 2: classid 2:1 htb rate ${DSPEED}kbit
+    tc qdisc add dev $IFB parent 2:1 handle 11: netem delay ${DDELAY}ms
     
     # Add filter to rule for IP address
     tc filter add dev $IFB protocol ip parent 2: prio 1 u32 match ip src 0.0.0.0/0 flowid 2:1
