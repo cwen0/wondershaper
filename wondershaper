@@ -23,15 +23,16 @@ USAGE: $0 [-hcs] [-a <adapter>] [-d <rate>] [-l <delay>] [-u <rate>]
 Limit the bandwidth of an adapter
 
 OPTIONS:
-   -h           Show this message
-   -a <adapter> Set the adpter
-   -d <rate>    Set maximum download rate (in Kbps) and/or
-   -l <delay>   Set downlink delay (in ms)
-   -u <rate>    Set maximum upload rate (in Kbps)
-   -p           Use presets in /etc/conf.d/wondershaper.conf
-   -c           Clear the limits from adapter
-   -s           Show the current status of adapter
-   -v           Show the current version
+   -h                   Show this message
+   -a <adapter>         Set the adpter
+   -d <rate>            Set maximum download rate (in Kbps) and/or
+   -l <delay>           Set download delay (in ms)
+   -n <delay_variation> Set download delay variation (in ms)
+   -u <rate>            Set maximum upload rate (in Kbps)
+   -p                   Use presets in /etc/conf.d/wondershaper.conf
+   -c                   Clear the limits from adapter
+   -s                   Show the current status of adapter
+   -v                   Show the current version
 
 MODES:
    wondershaper -a <adapter> -d <rate> -l <delay> -u <rate>
@@ -48,6 +49,7 @@ EOF
 
 DSPEED=
 DDELAY=
+DELAY_VAR=
 USPEED=
 IFACE=
 IFB="ifb0"
@@ -59,8 +61,9 @@ do	case "$o" in
 		exit 1;;
         v)      echo "Version $VERSION"
                 exit 0;;
-	d)	DSPEED=$OPTARG;;
+	d)      DSPEED=$OPTARG;;
 	l)      DDELAY=$OPTARG;;
+	n)      DELAY_VAR=$OPTARG;;
 	u)      USPEED=$OPTARG;;
 	a)      IFACE=$OPTARG;;
 	p)      MODE="presets";;
@@ -214,7 +217,7 @@ then
 
     tc filter add dev $IFACE parent 1: protocol ip prio 18 u32 \
         match ip dst 0.0.0.0/0 flowid 1:20
-    
+
 fi
 
 ########## downlink #############
@@ -234,13 +237,13 @@ then
     tc qdisc add dev $IFACE handle ffff: ingress
     tc filter add dev $IFACE parent ffff: protocol ip u32 match u32 0 0 \
         action mirred egress redirect dev $IFB
-    
+
     # Add class and rules for virtual
     tc qdisc add dev $IFB root handle 2: htb
     tc class add dev $IFB parent 2: classid 2:1 htb rate ${DSPEED}kbit
-    tc qdisc add dev $IFB parent 2:1 handle 11: netem delay ${DDELAY}ms
-    
+    tc qdisc add dev $IFB parent 2:1 handle 11: netem delay ${DDELAY}ms ${DELAY_VAR}ms
+
     # Add filter to rule for IP address
     tc filter add dev $IFB protocol ip parent 2: prio 1 u32 match ip src 0.0.0.0/0 flowid 2:1
-    
+
 fi
