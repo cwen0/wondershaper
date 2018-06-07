@@ -18,7 +18,7 @@ VERSION=1.4
 usage()
 {
 cat << EOF
-USAGE: $0 [-hcs] [-a <adapter>] [-d <rate>] [-l <delay>] [-u <rate>]
+USAGE: $0 [-hcs] [-a <adapter>] [-d <rate>] [-l <delay>] [-u <rate>] [-n <delay_variation>]
 
 Limit the bandwidth of an adapter
 
@@ -55,7 +55,7 @@ IFACE=
 IFB="ifb0"
 MODE=
 
-while getopts hvd:u:l:a:pcs o
+while getopts hvd:l:n:u:a:pcs o
 do	case "$o" in
 	h)	usage
 		exit 1;;
@@ -106,7 +106,7 @@ then
     tc qdisc del dev $IFACE ingress 2> /dev/null > /dev/null
     tc qdisc del dev $IFB   root    2> /dev/null > /dev/null
     tc qdisc del dev $IFB   ingress 2> /dev/null > /dev/null
-    exit
+    exit 0
 fi
 
 if ( [[ -z $DSPEED ]] && [[ -z $USPEED ]] ) || [[ -z $IFACE ]]
